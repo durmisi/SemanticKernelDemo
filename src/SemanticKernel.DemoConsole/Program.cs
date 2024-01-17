@@ -1,36 +1,86 @@
-﻿using Microsoft.SemanticKernel;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 using Microsoft.SemanticKernel.Planning.Handlebars;
 using Microsoft.SemanticKernel.Plugins.Core;
+using Microsoft.SemanticKernel.PromptTemplates.Handlebars;
 using SemanticKernelDemo.Plugins;
+using System.Reflection;
+using System.Reflection.PortableExecutable;
 
 var kernelBuilder = Kernel.CreateBuilder();
 
-//kernelBuilder.Services.AddLogging(c => c.AddDebug().SetMinimumLevel(LogLevel.Trace));
+kernelBuilder.Services.AddLogging(c => c.SetMinimumLevel(LogLevel.Trace).AddDebug().AddConsole());
+
 
 kernelBuilder.AddAzureOpenAIChatCompletion(
          "gpt-35-turbo-0613",                      // Azure OpenAI Deployment Name
-         "https://{}.openai.azure.com/", // Azure OpenAI Endpoint
-         "");      // Azure OpenAI Key
+         "https://{instance}.openai.azure.com/", // Azure OpenAI Endpoint
+         "-----------------------------",
+         "AzureOpenAI");      // Azure OpenAI Key
 
 
-kernelBuilder.Plugins.AddFromType<AuthorEmailPlanner>();
-kernelBuilder.Plugins.AddFromType<EmailPlugin>();
+//kernelBuilder.Plugins.AddFromType<AuthorEmailPlanner>();
+//kernelBuilder.Plugins.AddFromType<EmailPlugin>();
+
 
 var kernel = kernelBuilder.Build();
+
+
+KernelFunction dynaFunc = kernel.CreateFunctionFromPrompt(new PromptTemplateConfig()
+{
+    Name = "GenerateStory",
+    Template = "Tell a story about {{$topic}} that is {{$length}} sentences long.",
+    InputVariables = new List<InputVariable> {
+        new InputVariable()
+        {
+            Name ="topic",
+            IsRequired = true,
+            Description="The topic of the story."
+        },
+
+        new InputVariable()
+        {
+            Name ="length",
+            IsRequired = true,
+            Description="The number of sentences in the story."
+        }
+    },
+    OutputVariable = new OutputVariable()
+    {
+        Description = "The generated story.",
+    },
+    ExecutionSettings = new Dictionary<string, PromptExecutionSettings>()
+    {
+        {"AzureOpenAI", new OpenAIPromptExecutionSettings() { MaxTokens = 100, Temperature = 0.4, TopP = 1 } }
+    }
+});
+
+kernel.ImportPluginFromFunctions("Dynamic", new[] { dynaFunc });
+
+#pragma warning disable SKEXP0004 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
+void MyPreHandler(object? sender, FunctionInvokingEventArgs e)
+{
+    Console.WriteLine($"{e.Function.Name} : Pre Execution Handler - Triggered");
+}
+
+void MyPostExecutionHandler(object? sender, FunctionInvokedEventArgs e)
+{
+    Console.WriteLine($"{e.Function.Name} : Post Execution Handler - Usage: {e.Result.Metadata?["Usage"]?.ToString()}");
+}
+
+kernel.FunctionInvoking += MyPreHandler;
+kernel.FunctionInvoked += MyPostExecutionHandler;
+#pragma warning restore SKEXP0004 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 
 
 // Retrieve the chat completion service from the kernel
 IChatCompletionService chatCompletionService = kernel.GetRequiredService<IChatCompletionService>();
 
 // Create the chat history
-ChatHistory chatMessages = new ChatHistory("""
-You are a friendly assistant who likes to follow the rules. You will complete required steps
-and request approval before taking any consequential actions. If the user doesn't provide
-enough information for you to complete a task, you will keep asking questions until you have
-enough information to complete the task.
-""");
+ChatHistory chatMessages = new ChatHistory();
 
 // Start the conversation
 while (true)
@@ -55,7 +105,7 @@ while (true)
     await foreach (var content in result)
     {
 
-        if(content.Content == null)
+        if (content.Content == null)
         {
             continue;
         }
