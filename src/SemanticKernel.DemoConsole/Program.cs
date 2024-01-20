@@ -3,12 +3,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
-using Microsoft.SemanticKernel.Planning.Handlebars;
-using Microsoft.SemanticKernel.Plugins.Core;
-using Microsoft.SemanticKernel.PromptTemplates.Handlebars;
-using SemanticKernelDemo.Plugins;
-using System.Reflection;
-using System.Reflection.PortableExecutable;
+using SemanticKernelDemo.Extensions;
 
 var kernelBuilder = Kernel.CreateBuilder();
 
@@ -18,57 +13,62 @@ kernelBuilder.Services.AddLogging(c => c.SetMinimumLevel(LogLevel.Trace).AddDebu
 kernelBuilder.AddAzureOpenAIChatCompletion(
          "gpt-35-turbo-0613",                      // Azure OpenAI Deployment Name
          "https://{instance}.openai.azure.com/", // Azure OpenAI Endpoint
-         "-----------------------------",
+         "{key}",
          "AzureOpenAI");      // Azure OpenAI Key
-
-
-//kernelBuilder.Plugins.AddFromType<AuthorEmailPlanner>();
-//kernelBuilder.Plugins.AddFromType<EmailPlugin>();
 
 
 var kernel = kernelBuilder.Build();
 
 
-KernelFunction dynaFunc = kernel.CreateFunctionFromPrompt(new PromptTemplateConfig()
+var dynaFuncions = new List<KernelFunction>();
+
+foreach (var scenario in new ScenariosProvider().Get())
 {
-    Name = "GenerateStory",
-    Template = "Tell a story about {{$topic}} that is {{$length}} sentences long.",
-    InputVariables = new List<InputVariable> {
-        new InputVariable()
-        {
-            Name ="topic",
-            IsRequired = true,
-            Description="The topic of the story."
-        },
 
-        new InputVariable()
+    var dynaFunc = kernel.CreateFunctionFromPrompt(new PromptTemplateConfig()
+    {
+        Name = scenario.Name,
+        Template = scenario.Template,
+        InputVariables = scenario.InputVariables,
+        OutputVariable = scenario.OutputVariable,
+        ExecutionSettings = new Dictionary<string, PromptExecutionSettings>()
         {
-            Name ="length",
-            IsRequired = true,
-            Description="The number of sentences in the story."
+            {"AzureOpenAI", scenario.ExecutionSettings }
         }
-    },
-    OutputVariable = new OutputVariable()
-    {
-        Description = "The generated story.",
-    },
-    ExecutionSettings = new Dictionary<string, PromptExecutionSettings>()
-    {
-        {"AzureOpenAI", new OpenAIPromptExecutionSettings() { MaxTokens = 100, Temperature = 0.4, TopP = 1 } }
-    }
-});
+    });
 
-kernel.ImportPluginFromFunctions("Dynamic", new[] { dynaFunc });
+    dynaFuncions.Add(dynaFunc);
+}
+
+kernel.ImportPluginFromFunctions("DynaFunctions", dynaFuncions);
 
 #pragma warning disable SKEXP0004 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 void MyPreHandler(object? sender, FunctionInvokingEventArgs e)
 {
     Console.WriteLine($"{e.Function.Name} : Pre Execution Handler - Triggered");
+
+    foreach (var item in e.Arguments)
+    {
+        if (item.Key == "confim" && item.Value == null || item.Value?.ToString() != "yes")
+        {
+            //TODO: find a way to ask for confirmation again
+        }
+    }
+
+
+
 }
 
 void MyPostExecutionHandler(object? sender, FunctionInvokedEventArgs e)
 {
     Console.WriteLine($"{e.Function.Name} : Post Execution Handler - Usage: {e.Result.Metadata?["Usage"]?.ToString()}");
+
+    foreach (var item in e.Arguments)
+    {
+        Console.WriteLine($"{item.Key}:{item.Value}");
+    }
+
+    //TODO: invoke the scenario handler
 }
 
 kernel.FunctionInvoking += MyPreHandler;
@@ -80,19 +80,45 @@ kernel.FunctionInvoked += MyPostExecutionHandler;
 IChatCompletionService chatCompletionService = kernel.GetRequiredService<IChatCompletionService>();
 
 // Create the chat history
-ChatHistory chatMessages = new ChatHistory();
+
+var systemMessage = new List<ChatMessageContent> {
+
+    new (AuthorRole.System, @"
+        Please don`t answer on question outside of your tools knowledge! 
+        Always clear your history when start a new session.
+    ")
+};
+
+ChatHistory chatMessages = new ChatHistory(systemMessage);
+
 
 // Start the conversation
+
+Console.WriteLine("Hi, Welcome to your virtual chat assistant, type \"quit\" if you want to leave.");
+
 while (true)
 {
     // Get user input
-    System.Console.Write("User > ");
-    chatMessages.AddUserMessage(Console.ReadLine()!);
+    Console.Write("User: ");
+    string question = Console.ReadLine() ?? string.Empty;
+    if (question == "quit")
+    {
+        break;
+    }
+
+    if (string.IsNullOrEmpty(question))
+    {
+        continue;
+    }
+
+    chatMessages.AddUserMessage(question!);
 
     // Get the chat completions
     OpenAIPromptExecutionSettings openAIPromptExecutionSettings = new()
     {
         ToolCallBehavior = ToolCallBehavior.AutoInvokeKernelFunctions,
+        Temperature = 0,
+        MaxTokens = 200
     };
 
     var result = chatCompletionService.GetStreamingChatMessageContentsAsync(

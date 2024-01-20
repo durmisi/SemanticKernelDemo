@@ -9,7 +9,7 @@ namespace SemanticKernelDemo.Plugins
     public class EmailPlugin
     {
         [KernelFunction]
-        [Description("Sends an email to a recipient.")]
+        [Description("Sends an email to support.")]
         public async Task SendEmailAsync(
             Kernel kernel,
             [Description("Semicolon delimitated list of emails of the recipients")] string recipientEmails,
