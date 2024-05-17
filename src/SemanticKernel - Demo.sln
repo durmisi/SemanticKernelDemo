@@ -3,17 +3,19 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.8.34408.163
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Prompts", "Prompts", "{E07DAB17-7FBF-413B-B12C-111421B027EC}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Planners", "Planners", "{6FC78F5D-B4B0-4BE8-994A-5961BF840ED8}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Agents", "Agents", "{14145754-169B-4B1C-ADD5-239C84EFCA3A}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Memory", "Memory", "{1C5C0178-B1D8-43BF-9343-E1E77FC7D82C}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Custom", "Custom", "{EB70A3B4-E2A5-4655-8873-C2F6E7BC448C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SemanticKernel.Demo.Tests", "SemanticKernel.Demo.Tests\SemanticKernel.Demo.Tests.csproj", "{992AC792-F935-4532-AAC7-11D6D2160F22}"
 EndProject
 Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{992AC792-F935-4532-AAC7-11D6D2160F22}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{992AC792-F935-4532-AAC7-11D6D2160F22}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{992AC792-F935-4532-AAC7-11D6D2160F22}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{992AC792-F935-4532-AAC7-11D6D2160F22}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
