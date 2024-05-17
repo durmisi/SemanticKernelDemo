@@ -46,6 +46,39 @@ namespace SemanticKernel.Demo.Tests
             Assert.Equal("Neutral", response);
         }
 
+        /// <summary>
+        ///  Few-shot prompting can be used as a technique to enable in-context learning 
+        ///  where we provide demonstrations in the prompt to steer the model to better performance. 
+        ///  https://www.promptingguide.ai/techniques/fewshot
+        /// </summary>
+        /// <returns></returns>
+        [Fact]
+        public async Task Few_Shot_Prompting_demo_works_as_expected()
+        {
+            //Arrange
+            var builder = CreateBuilder();
+            var kernel = builder.Build();
+
+            //Act
+            string prompt = @"
+                    Positive This is awesome! 
+                    This is bad! Negative
+                    Wow that movie was rad!
+                    Positive
+                    What a horrible show! --
+            ";
+
+            outputHelper.WriteLine(prompt);
+
+            var result = await kernel.InvokePromptAsync(prompt);
+            var response = result.GetValue<string>();
+
+            outputHelper.WriteLine(response);
+
+            //Assert
+            Assert.Equal("Negative", response);
+        }
+
         private static IKernelBuilder CreateBuilder(Action<IKernelBuilder>? configure = null)
         {
             var builder = Kernel.CreateBuilder();
