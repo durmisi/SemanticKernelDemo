@@ -79,6 +79,40 @@ namespace SemanticKernel.Demo.Tests
             Assert.Equal("Negative", response);
         }
 
+
+        /// <summary>
+        /// chain-of-thought (CoT) prompting enables complex reasoning capabilities through intermediate reasoning steps. 
+        /// You can combine it with few-shot prompting to get better results on more complex tasks 
+        /// that require reasoning before responding.
+        /// https://www.promptingguide.ai/techniques/cot
+        /// </summary>
+        /// <returns></returns>
+        [Fact]
+        public async Task Chain_of_Thought_Prompting_demo_works_as_expected()
+        {
+            //Arrange
+            var builder = CreateBuilder();
+            var kernel = builder.Build();
+                
+            //Act
+            string prompt = @"
+                The odd numbers in this group add up to an even number: 4, 8, 9, 15, 12, 2, 1.
+                A: Adding all the odd numbers (9, 15, 1) gives 25. The answer is False.
+                The odd numbers in this group add up to an even number: 15, 32, 5, 13, 82, 7, 1. 
+                A:
+            ";
+
+            outputHelper.WriteLine(prompt);
+
+            var result = await kernel.InvokePromptAsync(prompt);
+            var response = result.GetValue<string>();
+
+            outputHelper.WriteLine(response);
+
+            //Assert
+            Assert.Equal("Adding all the odd numbers (15, 5, 13, 7, 1) gives 41. The answer is False.", response);
+        }
+
         private static IKernelBuilder CreateBuilder(Action<IKernelBuilder>? configure = null)
         {
             var builder = Kernel.CreateBuilder();
