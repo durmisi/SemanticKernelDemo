@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.SemanticKernel;
+using System.Net.NetworkInformation;
 using Xunit.Abstractions;
 
 namespace SemanticKernel.Demo.Tests
@@ -93,7 +94,7 @@ namespace SemanticKernel.Demo.Tests
             //Arrange
             var builder = CreateBuilder();
             var kernel = builder.Build();
-                
+
             //Act
             string prompt = @"
                 The odd numbers in this group add up to an even number: 4, 8, 9, 15, 12, 2, 1.
@@ -179,6 +180,44 @@ namespace SemanticKernel.Demo.Tests
             //Assert
             Assert.Contains("67", response);
         }
+
+
+        /// <summary>
+        /// LLMs continue to be improved and one popular technique includes 
+        /// the ability to incorporate knowledge or information to help the model make more accurate predictions.
+        /// Using a similar idea, can the model also be used to generate knowledge before making a prediction? 
+        /// That's what is attempted in the paper by Liu et al. 2022 (https://arxiv.org/pdf/2110.08387.pdf)-- 
+        /// generate knowledge to be used as part of the prompt.
+        /// https://www.promptingguide.ai/techniques/knowledge
+        /// </summary>
+        /// <returns></returns>
+
+        [Fact]
+        public async Task Generated_Knowledge_Prompting_demo_works_as_expected()
+        {
+            //Arrange
+            var builder = CreateBuilder();
+            var kernel = builder.Build();
+
+            //Act
+            string prompt = @"
+                Input: Part of golf is trying to get a higher point total than others. Yes or No?
+                Knowledge: The objective of golf is to play a set of holes in the least number of strokes. A round of golf typically consists of 18 holes. Each hole is played once in the round on a standard golf course. Each stroke is counted as one point, and the total number of strokes is used to determine the winner of the game.
+
+                Explain and Answer: 
+            ";
+
+            outputHelper.WriteLine(prompt);
+
+            var result = await kernel.InvokePromptAsync(prompt);
+            var response = result.GetValue<string>();
+
+            outputHelper.WriteLine(response);
+
+            //Assert
+            Assert.Contains("No", response);
+        }
+
 
         private static IKernelBuilder CreateBuilder(Action<IKernelBuilder>? configure = null)
         {
